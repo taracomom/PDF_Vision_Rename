@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Vision Rename Tool - Final</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: #f0f2f5;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            margin: 8px 4px;
+            transition: background 0.3s;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-success { background: #28a745; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-danger { background: #dc3545; }
+        .btn-large {
+            padding: 20px 40px;
+            font-size: 18px;
+            margin: 20px 10px;
+        }
+        .upload-area { 
+            border: 3px dashed #007bff; 
+            padding: 40px; 
+            text-align: center; 
+            margin: 20px 0; 
+            border-radius: 8px; 
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover { background: #f8f9ff; }
+        .upload-area.dragover { background: #e3f2fd; border-color: #0056b3; }
+        .form-group { margin: 15px 0; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 16px; }
+        .form-group input { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #ddd; 
+            border-radius: 5px; 
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .status { 
+            padding: 12px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        .status.success { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .status.warning { background: #fff3cd; color: #856404; border-color: #ffeaa7; }
+        .filename-section {
+            background: #f8f9fa; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin: 15px 0; 
+            border: 1px solid #dee2e6;
+        }
+        .old-filename {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-family: monospace;
+        }
+        .new-filename {
+            font-family: monospace; 
+            font-size: 16px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        #canvas { 
+            max-width: 100%; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            margin: 15px 0;
+            display: block;
+        }
+        .canvas-container {
+            text-align: center;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            height: 70vh;
+            overflow: auto;
+        }
+        .hidden { display: none; }
+        .progress { 
+            width: 100%; 
+            height: 25px; 
+            background: #f0f0f0; 
+            border-radius: 10px; 
+            margin: 15px 0; 
+        }
+        .progress-bar { 
+            height: 100%; 
+            background: #007bff; 
+            border-radius: 10px; 
+            transition: width 0.3s; 
+            text-align: center; 
+            line-height: 25px; 
+            color: white; 
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .vision-result {
+            background: #e8f5e8;
+            border: 1px solid #c3e6cb;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+            font-size: 16px;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 450px;
+            gap: 30px;
+            margin-top: 30px;
+            min-height: 70vh;
+        }
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 25px 0;
+        }
+        .batch-info {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .file-progress {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .current-file {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 16px;
+        }
+        .mode-tabs {
+            display: flex;
+            margin: 20px 0;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .mode-tab {
+            padding: 15px 30px;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            margin-right: 5px;
+        }
+        .mode-tab.active {
+            background: #007bff;
+            color: white;
+        }
+        .mode-tab:hover {
+            background: #007bff;
+            color: white;
+        }
+        .api-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            border: 1px solid #dee2e6;
+        }
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #f0f;
+            animation: confetti-fall 3s linear infinite;
+            z-index: 1000;
+        }
+        
+        .confetti:nth-child(odd) {
+            background: #ff0;
+            animation-delay: -0.5s;
+        }
+        
+        .confetti:nth-child(3n) {
+            background: #0ff;
+            animation-delay: -1s;
+        }
+        
+        .confetti:nth-child(4n) {
+            background: #0f0;
+            animation-delay: -1.5s;
+        }
+        
+        .confetti:nth-child(5n) {
+            background: #f00;
+            animation-delay: -2s;
+        }
+        
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+        
+        .file-transition {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 123, 255, 0.95);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 999;
+            animation: fadeInOut 2s ease-in-out;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            30% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+        }
+        
+        .success-animation {
+            animation: pulse-success 0.6s ease-in-out;
+        }
+        
+        @keyframes pulse-success {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); background-color: #d4edda; }
+            100% { transform: scale(1); }
+        }
+        
+        .controls-panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            gap: 15px;
+            overflow-y: auto;
+            max-height: 70vh;
+        }
+        
+        @media (max-width: 768px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 PDF Vision Rename Tool</h1>
+        <p>ファイル・フォルダを選択すると自動でVision解析 → リネーム確定</p>
+        
+        <div id="statusArea"></div>
+        
+        <!-- Progress Bar -->
+        <div id="progressContainer" class="hidden">
+            <div class="progress">
+                <div id="progressBar" class="progress-bar" style="width: 0%">0%</div>
+            </div>
+        </div>
+        
+        <!-- Mode Selection -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="singleTab" onclick="setMode('single')">📄 単体ファイル</button>
+            <button class="mode-tab" id="batchTab" onclick="setMode('batch')">📁 フォルダ一括</button>
+        </div>
+        
+        <!-- Single File Mode -->
+        <div id="singleModeContent">
+            <div class="upload-area" id="uploadArea">
+                <h2>📎 ファイルをドロップまたはクリック</h2>
+                <p>PDF・画像ファイル対応</p>
+                <input type="file" id="fileInput" accept=".pdf,image/*" style="display: none;" />
+            </div>
+        </div>
+        
+        <!-- Batch Mode -->
+        <div id="batchModeContent" class="hidden">
+            <div class="upload-area" id="folderUploadArea">
+                <h2>📁 フォルダを選択</h2>
+                <p>PDF・画像ファイルを含むフォルダ（自動で順次処理開始）</p>
+                <button class="btn btn-large" onclick="selectFolderForBatch()">📁 フォルダ選択</button>
+            </div>
+            
+            <div id="batchProgress" class="hidden">
+                <div class="file-progress">
+                    <div>📋 進捗: <span id="completedFiles">0</span> / <span id="totalFiles">0</span> 完了</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Current File Display (hidden in main layout) -->
+        <div id="currentFileDisplay" class="current-file hidden" style="display: none;">
+            <strong>📂 処理中:</strong> <span id="currentFileName"></span>
+        </div>
+        
+        
+        <div class="main-layout">
+            <!-- Left: Canvas for PDF/Image display -->
+            <div class="canvas-container">
+                <canvas id="canvas" class="hidden"></canvas>
+                <div id="canvasPlaceholder">ファイルを選択すると画像が表示されます</div>
+            </div>
+            
+            <!-- Right: Controls Panel -->
+            <div class="controls-panel">
+                
+                <!-- Form Fields -->
+                <div>
+                    <h2>✏️ 情報を確認・修正</h2>
+                    
+                    <div class="form-group">
+                        <label>📅 日付 (YYYYMMDD):</label>
+                        <input type="text" id="dateInput" placeholder="20250620" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>🏢 会社名:</label>
+                        <input type="text" id="companyInput" placeholder="株式会社サンプル" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>🛠️ サービス名:</label>
+                        <input type="text" id="serviceInput" placeholder="クラウドサービス" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>💰 金額:</label>
+                        <input type="text" id="amountInput" placeholder="1200" />
+                    </div>
+                </div>
+                
+                <!-- Filename Section -->
+                <div>
+                    <h2>📝 ファイル名変更</h2>
+                    
+                    <div class="filename-section">
+                        <div class="old-filename" id="oldFilename">
+                            元ファイル名: ファイルを選択してください
+                        </div>
+                        <div class="new-filename" id="newFilename">
+                            新ファイル名: ファイルを選択してください
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-warning" onclick="manualVisionAnalysis()" id="reAnalyzeBtn" disabled>🔍 再解析</button>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-success btn-large" onclick="confirmRename()" id="confirmBtn" disabled>✅ リネーム確定</button>
+                    </div>
+                    
+                    <!-- Batch Mode Navigation -->
+                    <div id="batchNavigation" class="hidden">
+                        <div class="button-group">
+                            <button class="btn" onclick="skipFile()" id="skipBtn">⏭️ スキップ</button>
+                        </div>
+                    </div>
+                    
+                    <div id="renameStatus" class="hidden"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- API Key Section (Bottom) -->
+        <div class="api-section">
+            <h3>🔑 OpenAI API Key 設定</h3>
+            <div class="form-group">
+                <input type="password" id="apiKeyInput" placeholder="sk-..." style="width: 70%; display: inline-block;" />
+                <button class="btn" onclick="saveApiKey()" style="width: 25%; margin-left: 5%;">💾 保存</button>
+            </div>
+            <small style="color: #666;">Vision解析にはOpenAI API Keyが必要です</small>
+        </div>
+    </div>
+
+    <script>
+        console.log('PDF Vision Final Tool started');
+        
+        // PDF.js Worker設定
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+        
+        let currentFile = null;
+        let currentFileHandle = null;
+        let currentMode = 'single';
+        let batchFileHandles = [];
+        let currentBatchIndex = 0;
+        let completedCount = 0;
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusArea');
+            statusDiv.innerHTML = '<div class="status ' + type + '">' + message + '</div>';
+            setTimeout(function() {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        }
+        
+        function createConfetti() {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffa500', '#800080'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 3 + 's';
+                confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                document.body.appendChild(confetti);
+                
+                setTimeout(function() {
+                    confetti.remove();
+                }, 5000);
+            }
+        }
+        
+        function showFileTransition(message) {
+            const transition = document.createElement('div');
+            transition.className = 'file-transition';
+            transition.textContent = message;
+            document.body.appendChild(transition);
+            
+            setTimeout(function() {
+                transition.remove();
+            }, 2000);
+        }
+        
+        function addSuccessAnimation(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.add('success-animation');
+                setTimeout(function() {
+                    element.classList.remove('success-animation');
+                }, 600);
+            }
+        }
+        
+        function showProgress(percent, text) {
+            document.getElementById('progressContainer').classList.remove('hidden');
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('progressBar').textContent = text;
+        }
+        
+        function hideProgress() {
+            document.getElementById('progressContainer').classList.add('hidden');
+        }
+        
+        function saveApiKey() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey.startsWith('sk-')) {
+                showStatus('有効なOpenAI API Keyを入力してください', 'error');
+                return;
+            }
+            localStorage.setItem('openai_api_key', apiKey);
+            showStatus('API Keyを保存しました', 'success');
+            document.getElementById('apiKeyInput').value = '';
+        }
+        
+        // Mode Selection
+        function setMode(mode) {
+            currentMode = mode;
+            
+            document.getElementById('singleTab').classList.toggle('active', mode === 'single');
+            document.getElementById('batchTab').classList.toggle('active', mode === 'batch');
+            
+            document.getElementById('singleModeContent').classList.toggle('hidden', mode !== 'single');
+            document.getElementById('batchModeContent').classList.toggle('hidden', mode !== 'batch');
+            document.getElementById('batchNavigation').classList.toggle('hidden', mode !== 'batch');
+            
+            resetAll();
+        }
+        
+        function resetAll() {
+            currentFile = null;
+            currentFileHandle = null;
+            batchFileHandles = [];
+            currentBatchIndex = 0;
+            completedCount = 0;
+            
+            document.getElementById('canvas').classList.add('hidden');
+            document.getElementById('canvasPlaceholder').style.display = 'block';
+            document.getElementById('visionResult').classList.add('hidden');
+            document.getElementById('currentFileDisplay').classList.add('hidden');
+            document.getElementById('batchProgress').classList.add('hidden');
+            
+            updateFilenameDisplay();
+            clearForm();
+            disableButtons();
+        }
+        
+        function clearForm() {
+            document.getElementById('dateInput').value = '';
+            document.getElementById('companyInput').value = '';
+            document.getElementById('serviceInput').value = '';
+            document.getElementById('amountInput').value = '';
+        }
+        
+        function disableButtons() {
+            document.getElementById('reAnalyzeBtn').disabled = true;
+            document.getElementById('confirmBtn').disabled = true;
+        }
+        
+        function enableButtons() {
+            document.getElementById('reAnalyzeBtn').disabled = false;
+            document.getElementById('confirmBtn').disabled = false;
+        }
+        
+        function updateFilenameDisplay() {
+            const oldFilename = currentFile ? currentFile.name : 'ファイルを選択してください';
+            const date = document.getElementById('dateInput').value || '不明';
+            const company = document.getElementById('companyInput').value || '不明';
+            const service = document.getElementById('serviceInput').value || '不明';
+            const amount = document.getElementById('amountInput').value || '不明';
+            
+            let newFilename = 'ファイルを選択してください';
+            if (currentFile) {
+                const extension = currentFile.name.split('.').pop();
+                newFilename = date + '_' + company + '_' + service + '_' + amount + '.' + extension;
+            }
+            
+            document.getElementById('oldFilename').textContent = '元ファイル名: ' + oldFilename;
+            document.getElementById('newFilename').textContent = '新ファイル名: ' + newFilename;
+        }
+        
+        // Single File Mode
+        document.getElementById('uploadArea').addEventListener('click', function() {
+            document.getElementById('fileInput').click();
+        });
+        
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                currentFile = file;
+                currentFileHandle = null;
+                handleFile(file);
+            }
+        });
+        
+        // Batch Mode
+        async function selectFolderForBatch() {
+            if (!('showDirectoryPicker' in window)) {
+                showStatus('このブラウザはフォルダ選択をサポートしていません（Chrome/Edge 86+が必要）', 'error');
+                return;
+            }
+            
+            try {
+                const directoryHandle = await window.showDirectoryPicker();
+                showStatus('フォルダを読み込み中...', 'warning');
+                
+                const fileHandles = [];
+                for await (const [name, handle] of directoryHandle.entries()) {
+                    if (handle.kind === 'file') {
+                        const file = await handle.getFile();
+                        if (file.type === 'application/pdf' || file.type.startsWith('image/')) {
+                            fileHandles.push({ handle, file });
+                        }
+                    }
+                }
+                
+                if (fileHandles.length === 0) {
+                    showStatus('サポートされているファイル（PDF、画像）が見つかりません', 'error');
+                    return;
+                }
+                
+                batchFileHandles = fileHandles;
+                currentBatchIndex = 0;
+                completedCount = 0;
+                
+                // すぐに処理開始
+                showBatchProgress();
+                processNextBatchFile();
+                
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showStatus('フォルダ選択がキャンセルされました', 'warning');
+                } else {
+                    showStatus('フォルダ読み込みエラー: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        function showBatchProgress() {
+            document.getElementById('batchProgress').classList.remove('hidden');
+            updateBatchStats();
+        }
+        
+        function updateBatchStats() {
+            document.getElementById('totalFiles').textContent = batchFileHandles.length;
+            document.getElementById('completedFiles').textContent = completedCount;
+        }
+        
+        function processNextBatchFile() {
+            if (currentBatchIndex >= batchFileHandles.length) {
+                // 全体完了のお祝い
+                createConfetti();
+                showFileTransition('🎉 一括処理完了！全' + completedCount + 'ファイル処理しました');
+                showStatus('✅ 一括処理完了！全' + completedCount + 'ファイルを処理しました', 'success');
+                document.getElementById('currentFileDisplay').classList.add('hidden');
+                return;
+            }
+            
+            const item = batchFileHandles[currentBatchIndex];
+            currentFile = item.file;
+            currentFileHandle = item.handle;
+            
+            // ファイル切り替えの視覚効果
+            if (currentBatchIndex > 0) {
+                showFileTransition('📄 次のファイル: ' + item.file.name);
+            }
+            
+            // Current file display
+            document.getElementById('currentFileDisplay').classList.remove('hidden');
+            document.getElementById('currentFileName').textContent = item.file.name;
+            
+            // アニメーション効果
+            addSuccessAnimation('currentFileDisplay');
+            
+            showStatus('処理中: ' + item.file.name + ' (' + (currentBatchIndex + 1) + '/' + batchFileHandles.length + ')', 'warning');
+            
+            handleFile(item.file);
+        }
+        
+        function skipFile() {
+            currentBatchIndex++;
+            processNextBatchFile();
+        }
+        
+        function confirmRename() {
+            if (currentMode === 'batch') {
+                // バッチモードでは確定後自動で次へ
+                directRename(function() {
+                    // 紙吹雪でお祝い！
+                    createConfetti();
+                    addSuccessAnimation('confirmBtn');
+                    
+                    completedCount++;
+                    updateBatchStats();
+                    currentBatchIndex++;
+                    
+                    // 少し待ってから次のファイルへ
+                    setTimeout(function() {
+                        processNextBatchFile();
+                    }, 1000);
+                });
+            } else {
+                // 単体モードでは通常のリネーム
+                directRename(function() {
+                    // 単体モードでも紙吹雪
+                    createConfetti();
+                    addSuccessAnimation('confirmBtn');
+                });
+            }
+        }
+        
+        // File Processing
+        function handleFile(file) {
+            updateFilenameDisplay();
+            
+            if (file.type.startsWith('image/')) {
+                displayImage(file);
+            } else if (file.type === 'application/pdf') {
+                processPDF(file);
+            } else {
+                showStatus('サポートされていないファイル形式です', 'error');
+            }
+        }
+        
+        function displayImage(file) {
+            showProgress(20, '画像読み込み中...');
+            
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = function() {
+                document.getElementById('canvasPlaceholder').style.display = 'none';
+                canvas.classList.remove('hidden');
+                
+                const maxWidth = 800;
+                const maxHeight = 500;
+                
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > maxWidth) {
+                    height = (height * maxWidth) / width;
+                    width = maxWidth;
+                }
+                if (height > maxHeight) {
+                    width = (width * maxHeight) / height;
+                    height = maxHeight;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                hideProgress();
+                enableButtons();
+                updateFilenameDisplay();
+                
+                setTimeout(analyzeWithVision, 500);
+            };
+            
+            img.onerror = function() {
+                hideProgress();
+                showStatus('画像の読み込みに失敗しました', 'error');
+            };
+            
+            img.src = URL.createObjectURL(file);
+        }
+        
+        function processPDF(file) {
+            showProgress(10, 'PDF読み込み中...');
+            
+            const fileReader = new FileReader();
+            fileReader.onload = function() {
+                const typedarray = new Uint8Array(this.result);
+                
+                showProgress(30, 'PDF解析中...');
+                
+                pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                    showProgress(50, 'ページレンダリング中...');
+                    
+                    pdf.getPage(1).then(function(page) {
+                        const scale = 1.5;
+                        const viewport = page.getViewport({ scale: scale });
+                        
+                        const canvas = document.getElementById('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        
+                        document.getElementById('canvasPlaceholder').style.display = 'none';
+                        canvas.classList.remove('hidden');
+                        
+                        showProgress(80, 'ページ描画中...');
+                        
+                        page.render({
+                            canvasContext: context,
+                            viewport: viewport
+                        }).promise.then(function() {
+                            hideProgress();
+                            enableButtons();
+                            updateFilenameDisplay();
+                            
+                            setTimeout(analyzeWithVision, 500);
+                        });
+                    });
+                });
+            };
+            
+            fileReader.readAsArrayBuffer(file);
+        }
+        
+        function analyzeWithVision() {
+            const apiKey = localStorage.getItem('openai_api_key');
+            if (!apiKey) {
+                showStatus('API Keyが設定されていません', 'warning');
+                return;
+            }
+            
+            showProgress(20, 'Vision AI解析中...');
+            
+            try {
+                const canvas = document.getElementById('canvas');
+                const base64Image = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+                
+                showProgress(40, 'GPT-4 Vision呼び出し中...');
+                
+                fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + apiKey
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o-mini',
+                        messages: [{
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'text',
+                                    text: 'この画像は請求書、領収書、またはビジネス文書です。以下の情報を正確に抽出してJSONで返してください：\n\n{"date": "YYYYMMDD形式の日付", "company": "会社名", "service": "サービス名", "amount": "金額（数字のみ）", "currency": "USD/JPY/EUR等の通貨コード", "confidence": "high/medium/low"}\n\n日付は必ずYYYYMMDD形式に変換してください。不明な項目は""にしてください。'
+                                },
+                                {
+                                    type: 'image_url',
+                                    image_url: {
+                                        url: 'data:image/jpeg;base64,' + base64Image,
+                                        detail: 'high'
+                                    }
+                                }
+                            ]
+                        }],
+                        max_tokens: 500,
+                        temperature: 0.1
+                    })
+                })
+                .then(function(response) {
+                    showProgress(70, 'API応答処理中...');
+                    return response.json();
+                })
+                .then(function(data) {
+                    const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+                    if (!content) throw new Error('APIからの応答が無効です');
+                    
+                    const jsonMatch = content.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch) throw new Error('応答からJSONを抽出できませんでした');
+                    
+                    const result = JSON.parse(jsonMatch[0]);
+                    
+                    if (result.date) document.getElementById('dateInput').value = result.date;
+                    if (result.company) document.getElementById('companyInput').value = result.company;
+                    if (result.service) document.getElementById('serviceInput').value = result.service;
+                    if (result.amount) {
+                        let amount = result.amount;
+                        // Add currency suffix if detected
+                        if (result.currency && result.currency.toUpperCase() === 'USD') {
+                            amount = amount + 'USD';
+                        }
+                        document.getElementById('amountInput').value = amount;
+                    }
+                    
+                    updateFilenameDisplay();
+                    hideProgress();
+                    showStatus('✅ Vision解析完了！', 'success');
+                })
+                .catch(function(error) {
+                    hideProgress();
+                    showStatus('Vision解析エラー: ' + error.message, 'error');
+                });
+                
+            } catch (error) {
+                hideProgress();
+                showStatus('予期しないエラー: ' + error.message, 'error');
+            }
+        }
+        
+        function manualVisionAnalysis() {
+            analyzeWithVision();
+        }
+        
+        function displayVisionResult(result) {
+            const visionResult = document.getElementById('visionResult');
+            const visionDetails = document.getElementById('visionDetails');
+            
+            const confidence = result.confidence || 'unknown';
+            const confidenceColor = {
+                'high': '#28a745',
+                'medium': '#ffc107', 
+                'low': '#dc3545',
+                'unknown': '#6c757d'
+            }[confidence] || '#6c757d';
+            
+            visionDetails.innerHTML = 
+                '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 16px;">' +
+                '<div><strong>📅 日付:</strong> ' + (result.date || '不明') + '</div>' +
+                '<div><strong>🏢 会社名:</strong> ' + (result.company || '不明') + '</div>' +
+                '<div><strong>🛠️ サービス:</strong> ' + (result.service || '不明') + '</div>' +
+                '<div><strong>💰 金額:</strong> ' + (result.amount ? result.amount + (result.currency && result.currency.toUpperCase() === 'USD' ? 'USD' : '円') : '不明') + '</div>' +
+                '</div>' +
+                '<div style="margin-top: 15px; text-align: center;">' +
+                '<span style="background: ' + confidenceColor + '; color: white; padding: 6px 16px; border-radius: 15px; font-size: 14px; font-weight: 600;">' +
+                '信頼度: ' + confidence.toUpperCase() + '</span>' +
+                '</div>';
+            
+            visionResult.classList.remove('hidden');
+        }
+        
+        async function directRename(callback) {
+            if (!currentFile) {
+                showStatus('ファイルが選択されていません', 'error');
+                return;
+            }
+            
+            const newFilename = document.getElementById('newFilename').textContent.replace('新ファイル名: ', '');
+            const renameStatus = document.getElementById('renameStatus');
+            
+            if (!newFilename || newFilename === 'ファイルを選択してください') {
+                showStatus('新しいファイル名が設定されていません', 'error');
+                return;
+            }
+            
+            try {
+                renameStatus.classList.remove('hidden');
+                
+                if (currentMode === 'batch' && currentFileHandle) {
+                    // バッチモードでは新しいファイルをダウンロード（リネーム代替）
+                    renameStatus.innerHTML = '<div class="status warning">💾 新しい名前でファイル保存中: ' + currentFile.name + '</div>';
+                    
+                    const file = await currentFileHandle.getFile();
+                    const url = URL.createObjectURL(file);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = newFilename;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    renameStatus.innerHTML = '<div class="status success">✅ 新しいファイル保存完了: ' + newFilename + '</div>';
+                    showStatus('✅ 新しいファイル保存完了: ' + newFilename, 'success');
+                } else {
+                    // 単体モードでも新しいファイルをダウンロード
+                    renameStatus.innerHTML = '<div class="status warning">💾 新しい名前でファイル保存中: ' + currentFile.name + '</div>';
+                    
+                    const url = URL.createObjectURL(currentFile);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = newFilename;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    renameStatus.innerHTML = '<div class="status success">✅ 新しいファイル保存完了: ' + newFilename + '</div>';
+                    showStatus('✅ 新しいファイル保存完了: ' + newFilename, 'success');
+                }
+                
+                if (callback) callback();
+                
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    renameStatus.innerHTML = '<div class="status warning">⚠️ キャンセルされました</div>';
+                } else {
+                    renameStatus.innerHTML = '<div class="status error">❌ エラー: ' + error.message + '</div>';
+                    showStatus('リネームエラー: ' + error.message, 'error');
+                }
+            }
+            
+            setTimeout(function() {
+                renameStatus.classList.add('hidden');
+            }, 4000);
+        }
+        
+        // Auto-update filename
+        document.getElementById('dateInput').addEventListener('input', updateFilenameDisplay);
+        document.getElementById('companyInput').addEventListener('input', updateFilenameDisplay);
+        document.getElementById('serviceInput').addEventListener('input', updateFilenameDisplay);
+        document.getElementById('amountInput').addEventListener('input', updateFilenameDisplay);
+        
+        // Page load
+        document.addEventListener('DOMContentLoaded', function() {
+            showStatus('PDF Vision Tool 準備完了', 'success');
+            
+            const savedApiKey = localStorage.getItem('openai_api_key');
+            if (savedApiKey) {
+                document.getElementById('apiKeyInput').placeholder = 'API Key保存済み';
+            }
+            
+            updateFilenameDisplay();
+        });
+    </script>
+</body>
+</html>
