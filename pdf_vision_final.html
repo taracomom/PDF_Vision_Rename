@@ -2,7 +2,10 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>PDF Vision Rename Tool - Final</title>
+    <title>PDF Vision Rename Tool - Final v2.0</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
         let currentMode = 'single';
@@ -16,6 +19,7 @@
             if (singleTab && batchTab) {
                 singleTab.classList.toggle('active', mode === 'single');
                 batchTab.classList.toggle('active', mode === 'batch');
+                console.log('Tabs updated successfully');
             }
             
             const singleContent = document.getElementById('singleModeContent');
@@ -23,8 +27,22 @@
             if (singleContent && batchContent) {
                 singleContent.classList.toggle('hidden', mode !== 'single');
                 batchContent.classList.toggle('hidden', mode !== 'batch');
+                console.log('Content visibility updated:', mode === 'batch' ? 'Batch mode visible' : 'Single mode visible');
             }
         }
+
+        // 即座に実行される関数でブラウザサポートをチェック
+        function checkBrowserSupport() {
+            console.log('=== Browser Support Check ===');
+            console.log('showDirectoryPicker supported:', 'showDirectoryPicker' in window);
+            console.log('File System Access API supported:', 'showDirectoryPicker' in window);
+            if ('showDirectoryPicker' in window) {
+                console.log('✅ フォルダ選択機能は利用可能です');
+            } else {
+                console.log('❌ このブラウザはフォルダ選択をサポートしていません');
+            }
+        }
+        checkBrowserSupport();
 
         // New UI helper functions
         function showMetadataForm() {
@@ -444,10 +462,12 @@
                 
                 <!-- Batch Mode -->
                 <div id="batchModeContent" class="hidden">
-                    <div class="upload-area" id="folderUploadArea">
+                    <div class="upload-area" id="folderUploadArea" style="border: 3px dashed #28a745; background: #f8fff8;">
                         <h3>📁 フォルダを選択</h3>
-                        <p>PDF・画像ファイルを含むフォルダ</p>
-                        <button class="btn btn-large" onclick="selectFolderForBatch()">📁 フォルダ選択</button>
+                        <p><strong>このエリア全体がクリック可能です</strong></p>
+                        <p>PDF・画像ファイルを含むフォルダを選択</p>
+                        <button class="btn btn-large btn-success" onclick="selectFolderForBatch()">📁 フォルダ選択</button>
+                        <p><small>※ このボタンまたはエリア全体をクリック</small></p>
                     </div>
                     
                     <div id="batchProgress" class="hidden">
