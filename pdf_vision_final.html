@@ -4,6 +4,30 @@
     <meta charset="UTF-8">
     <title>PDF Vision Rename Tool - Final</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        let currentMode = 'single';
+        
+        function setMode(mode) {
+            currentMode = mode;
+            console.log('Setting mode to:', mode);
+            
+            const singleTab = document.getElementById('singleTab');
+            const batchTab = document.getElementById('batchTab');
+            if (singleTab && batchTab) {
+                singleTab.classList.toggle('active', mode === 'single');
+                batchTab.classList.toggle('active', mode === 'batch');
+            }
+            
+            const singleContent = document.getElementById('singleModeContent');
+            const batchContent = document.getElementById('batchModeContent');
+            if (singleContent && batchContent) {
+                singleContent.classList.toggle('hidden', mode !== 'single');
+                batchContent.classList.toggle('hidden', mode !== 'batch');
+            }
+        }
+
+        // selectFolderForBatch は下で詳細版を定義
+    </script>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -431,10 +455,11 @@
         
         let currentFile = null;
         let currentFileHandle = null;
-        let currentMode = 'single';
+        let currentDirectoryHandle = null;
         let batchFileHandles = [];
         let currentBatchIndex = 0;
         let completedCount = 0;
+
         
         function showStatus(message, type) {
             const statusDiv = document.getElementById('statusArea');
@@ -570,17 +595,39 @@
             document.getElementById('newFilename').textContent = '新ファイル名: ' + newFilename;
         }
         
-        // Single File Mode
-        document.getElementById('uploadArea').addEventListener('click', function() {
-            document.getElementById('fileInput').click();
-        });
-        
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                currentFile = file;
-                currentFileHandle = null;
-                handleFile(file);
+        // DOMが読み込まれた後にイベントリスナーを設定
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, setting up event listeners');
+            
+            // Single File Mode
+            const uploadArea = document.getElementById('uploadArea');
+            if (uploadArea) {
+                uploadArea.addEventListener('click', function() {
+                    console.log('Single file area clicked');
+                    document.getElementById('fileInput').click();
+                });
+            }
+            
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    console.log('File input changed:', e.target.files);
+                    const file = e.target.files[0];
+                    if (file) {
+                        currentFile = file;
+                        currentFileHandle = null;
+                        handleFile(file);
+                    }
+                });
+            }
+
+            // Folder upload area click handler
+            const folderUploadArea = document.getElementById('folderUploadArea');
+            if (folderUploadArea) {
+                folderUploadArea.addEventListener('click', function() {
+                    console.log('Folder area clicked');
+                    selectFolderForBatch();
+                });
             }
         });
         
@@ -592,7 +639,8 @@
             }
             
             try {
-                const directoryHandle = await window.showDirectoryPicker();
+                const directoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                currentDirectoryHandle = directoryHandle;
                 showStatus('フォルダを読み込み中...', 'warning');
                 
                 const fileHandles = [];
@@ -933,20 +981,43 @@
                 renameStatus.classList.remove('hidden');
                 
                 if (currentMode === 'batch' && currentFileHandle) {
-                    // バッチモードでは新しいファイルをダウンロード（リネーム代替）
-                    renameStatus.innerHTML = '<div class="status warning">💾 新しい名前でファイル保存中: ' + currentFile.name + '</div>';
+                    // File System Access API を使用して直接リネーム
+                    renameStatus.innerHTML = '<div class="status warning">✏️ ファイルを直接リネーム中: ' + currentFile.name + '</div>';
                     
-                    const file = await currentFileHandle.getFile();
-                    const url = URL.createObjectURL(file);
-                    
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = newFilename;
-                    a.style.display = 'none';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
+                    try {
+                        // Chrome 125+ の move() メソッドを使用
+                        if ('move' in currentFileHandle) {
+                            await currentFileHandle.move(newFilename);
+                            renameStatus.innerHTML = '<div class="status success">✅ ファイルを直接リネームしました: ' + newFilename + '</div>';
+                        } else if (currentDirectoryHandle) {
+                            // フォールバック: コピー→削除方式
+                            const file = await currentFileHandle.getFile();
+                            const newHandle = await currentDirectoryHandle.getFileHandle(newFilename, { create: true });
+                            const writableStream = await newHandle.createWritable();
+                            await writableStream.write(file);
+                            await writableStream.close();
+                            
+                            // 元のファイルを削除
+                            await currentDirectoryHandle.removeEntry(currentFile.name);
+                            renameStatus.innerHTML = '<div class="status success">✅ ファイルを直接リネームしました: ' + newFilename + '</div>';
+                        } else {
+                            throw new Error('DirectoryHandle not available');
+                        }
+                    } catch (error) {
+                        console.log('Direct rename failed, falling back to download:', error);
+                        // 最終フォールバック: ダウンロード
+                        const file = await currentFileHandle.getFile();
+                        const url = URL.createObjectURL(file);
+                        
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = newFilename;
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }
                     
                     renameStatus.innerHTML = '<div class="status success">✅ 新しいファイル保存完了: ' + newFilename + '</div>';
                     showStatus('✅ 新しいファイル保存完了: ' + newFilename, 'success');
