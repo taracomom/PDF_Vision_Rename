@@ -1,5 +1,21 @@
 # PDF Vision Rename - Claude Code Instructions
 
+## 🚨 絶対的事実：ブラウザで直接ファイルリネームは可能
+
+**❌ 間違った認識:** "ブラウザではローカルファイルを直接変更できない"
+**✅ 正しい事実:** Chrome 125+では File System Access API により**完全に可能**
+
+### 技術的根拠
+- **File System Access API** は W3C 標準仕様
+- **FileSystemFileHandle.move()** メソッドで直接リネーム実行可能
+- **このプロジェクトで実証済み** - 実際に動作している
+
+### 対応ブラウザでの実行可能な操作
+1. ✅ ローカルファイルの直接リネーム
+2. ✅ ファイル内容の読み取り・書き込み
+3. ✅ ディレクトリ内ファイルの削除・作成
+4. ✅ フォルダ全体への読み書きアクセス
+
 ## 🚨 重要な実装ルール
 
 ### ❌ 絶対にやってはいけないこと
@@ -99,9 +115,28 @@ if (file.type === 'application/pdf') {
 
 ## 🔧 技術仕様
 
-### 対応ブラウザ
-- Chrome 125+ (File System Access API + move()メソッド)
-- Edge 125+ (Chromiumベース)
+### 対応ブラウザ（File System Access API サポート）
+- ✅ **Chrome 125+** (move()メソッド完全サポート)
+- ✅ **Edge 125+** (Chromiumベース、同機能)
+- ❌ **Safari** (未実装)
+- ❌ **Firefox** (未実装)
+
+### API可用性の確認方法
+```javascript
+// ブラウザサポート確認
+if ('showDirectoryPicker' in window && 'move' in FileSystemFileHandle.prototype) {
+    console.log("✅ 直接ファイルリネーム可能");
+} else {
+    console.log("❌ このブラウザは未対応");
+}
+```
+
+### 実装の証明
+このアプリケーションは以下を**実際に実行**している：
+1. **フォルダ選択** → showDirectoryPicker({ mode: 'readwrite' })
+2. **ファイル解析** → OpenAI Vision API
+3. **直接リネーム** → FileSystemFileHandle.move(newName)
+4. **元ファイル置換** → ダウンロードフォルダではなく元の場所で変更
 
 ### 依存ライブラリ
 ```html
@@ -167,4 +202,29 @@ PDF_Vision_Rename/
 
 ---
 
-**🚨 重要**: このアプリケーションの核心は「直接リネーム」機能です。ダウンロードではなく、ローカルファイルシステム上での真のファイル名変更を実現することが最優先事項です。この要件を満たさない修正は一切受け入れられません。
+## 📚 参考資料・証明
+
+### W3C仕様書
+- [File System Access API - W3C Working Draft](https://wicg.github.io/file-system-access/)
+- [FileSystemFileHandle.move() - MDN](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/move)
+
+### 実動作例
+このプロジェクトのコードは以下を証明している：
+```javascript
+// 実際に動作するコード（このリポジトリ内）
+const directoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+const fileHandle = await directoryHandle.getFileHandle('example.pdf');
+await fileHandle.move('new_name.pdf'); // ✅ 直接リネーム成功
+```
+
+### ブラウザベンダーの公式サポート
+- **Chrome**: Version 86+ で File System Access API 実装
+- **Chrome**: Version 125+ で move() メソッド追加
+- **Microsoft Edge**: Chromium版で同等機能サポート
+
+---
+
+**🚨 絶対的結論**: 
+ブラウザでローカルファイルの直接リネームは**技術的に可能**であり、**このプロジェクトで実証済み**です。「ブラウザではできない」という主張は**完全に間違い**です。Chrome 125+を使用すれば確実に動作します。
+
+**この事実を否定する修正提案は技術的に不正確であり、受け入れられません。**
