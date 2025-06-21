@@ -14,7 +14,7 @@ echo.
 echo Starting PDF Vision Rename Tool...
 echo.
 
-start "" "%~dp0pdf_vision_original.html"
+start "" "%~dp0pdf_vision_final.html"
 
 echo.
 echo Tool launched successfully\!
